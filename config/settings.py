@@ -1,0 +1,2 @@
+ENVIRONMENT = "QA"
+BROWSER = "chrome"
