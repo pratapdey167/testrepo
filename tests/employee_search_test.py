@@ -1,39 +1,35 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-import time
 
+driver = webdriver.Chrome()
 
-def test_employee_search():
+driver.get(
+    "https://www.saucedemo.com/"
+)
 
-    driver = webdriver.Chrome()
+driver.find_element(
+    By.ID,
+    "user-name"
+).send_keys(
+    "standard_user"
+)
 
-    driver.get(
-        "https://portal.company.com/employees"
-    )
+driver.find_element(
+    By.ID,
+    "password"
+).send_keys(
+    "secret_sauce"
+)
 
-    driver.implicitly_wait(10)
+driver.find_element(
+    By.ID,
+    "login-button"
+).click()
 
-    search_box = driver.find_element(
-        By.XPATH,
-        "//input[@placeholder='Search Employee']"
-    )
+assert (
+    "inventory"
+    in
+    driver.current_url.lower()
+)
 
-    search_box.send_keys(
-        "John Smith"
-    )
-
-    time.sleep(3)
-
-    driver.find_element(
-        By.XPATH,
-        "//button[contains(text(),'Search')]"
-    ).click()
-
-    employee = driver.find_element(
-        By.XPATH,
-        "//td[contains(text(),'John Smith')]"
-    )
-
-    assert employee.is_displayed()
-
-    driver.quit()
+driver.quit()
