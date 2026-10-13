@@ -1,213 +1,56 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-import time
+import re
+from playwright.sync_api import Page, expect
 
-driver = webdriver.Chrome()
+def test_saucedemo_checkout_flow_playwright(page: Page) -> None:
+    # Setup and navigate
+    page.set_viewport_size({"width": 1920, "height": 1080})
+    page.goto("https://www.saucedemo.com/")
 
-driver.maximize_window()
+    # Login
+    page.get_by_placeholder("Username").fill("standard_user")
+    page.get_by_placeholder("Password").fill("secret_sauce")
+    page.get_by_role("button", name="Login").click()
 
-driver.get(
-    "https://www.saucedemo.com/"
-)
+    # Verify Inventory Page
+    expect(page).to_have_url(re.compile("inventory", re.IGNORECASE))
+    expect(page.locator(".title")).to_have_text("Products")
 
-# Login
+    # Sort Products
+    sort_dropdown = page.get_by_role("combobox")
+    sort_dropdown.click()
+    sort_dropdown.select_option("hilo")
 
-username = driver.find_element(
-    By.ID,
-    "user-name"
-)
+    # Add Products To Cart
+    page.locator("#add-to-cart-sauce-labs-backpack").click()
+    page.locator("#add-to-cart-sauce-labs-bike-light").click()
 
-password = driver.find_element(
-    By.ID,
-    "password"
-)
+    # Verify Cart Badge Count
+    cart_badge = page.locator(".shopping_cart_badge")
+    expect(cart_badge).to_have_text("2")
 
-username.send_keys(
-    "standard_user"
-)
+    # Open Cart
+    page.locator(".shopping_cart_link").click()
 
-password.send_keys(
-    "secret_sauce"
-)
+    # Validate Cart
+    cart_items = page.locator(".inventory_item_name")
+    expect(cart_items).to_have_count(2)
 
-driver.find_element(
-    By.ID,
-    "login-button"
-).click()
+    # Checkout
+    page.locator("#checkout").click()
+    page.get_by_placeholder("First Name").fill("Pratap")
+    page.get_by_placeholder("Last Name").fill("Dey")
+    page.get_by_placeholder("Zip/Postal Code").fill("700001")
+    page.locator("#continue").click()
 
-time.sleep(2)
+    # Verify Checkout Overview
+    expect(page.locator(".title")).to_have_text("Checkout: Overview")
+    page.locator("#finish").click()
 
-# Verify Inventory Page
+    # Verify Success
+    expect(page.locator(".complete-header")).to_have_text("Thank you for your order!")
 
-assert (
-    "inventory"
-    in
-    driver.current_url.lower()
-)
-
-inventory_title = driver.find_element(
-    By.CLASS_NAME,
-    "title"
-)
-
-assert (
-    inventory_title.text
-    ==
-    "Products"
-)
-
-# Sort Products
-
-sort_dropdown = driver.find_element(
-    By.CLASS_NAME,
-    "product_sort_container"
-)
-
-sort_dropdown.click()
-
-time.sleep(1)
-
-sort_option = driver.find_element(
-    By.XPATH,
-    "//option[@value='hilo']"
-)
-
-sort_option.click()
-
-time.sleep(2)
-
-# Add Products To Cart
-
-driver.find_element(
-    By.ID,
-    "add-to-cart-sauce-labs-backpack"
-).click()
-
-driver.find_element(
-    By.ID,
-    "add-to-cart-sauce-labs-bike-light"
-).click()
-
-time.sleep(1)
-
-cart_badge = driver.find_element(
-    By.CLASS_NAME,
-    "shopping_cart_badge"
-)
-
-assert cart_badge.text == "2"
-
-# Open Cart
-
-driver.find_element(
-    By.CLASS_NAME,
-    "shopping_cart_link"
-).click()
-
-time.sleep(2)
-
-# Validate Cart
-
-cart_items = driver.find_elements(
-    By.CLASS_NAME,
-    "inventory_item_name"
-)
-
-assert len(cart_items) == 2
-
-# Checkout
-
-driver.find_element(
-    By.ID,
-    "checkout"
-).click()
-
-time.sleep(1)
-
-driver.find_element(
-    By.ID,
-    "first-name"
-).send_keys(
-    "Pratap"
-)
-
-driver.find_element(
-    By.ID,
-    "last-name"
-).send_keys(
-    "Dey"
-)
-
-driver.find_element(
-    By.ID,
-    "postal-code"
-).send_keys(
-    "700001"
-)
-
-driver.find_element(
-    By.ID,
-    "continue"
-).click()
-
-time.sleep(2)
-
-# Verify Checkout Overview
-
-overview_title = driver.find_element(
-    By.CLASS_NAME,
-    "title"
-)
-
-assert (
-    overview_title.text
-    ==
-    "Checkout: Overview"
-)
-
-driver.find_element(
-    By.ID,
-    "finish"
-).click()
-
-time.sleep(2)
-
-# Verify Success
-
-success_message = driver.find_element(
-    By.CLASS_NAME,
-    "complete-header"
-)
-
-assert (
-    success_message.text
-    ==
-    "Thank you for your order!"
-)
-
-# Logout
-
-driver.find_element(
-    By.ID,
-    "react-burger-menu-btn"
-).click()
-
-time.sleep(1)
-
-WebDriverWait(
-    driver,
-    10
-).until(
-    EC.element_to_be_clickable(
-        (
-            By.ID,
-            "logout_sidebar_link"
-        )
-    )
-).click()
-
-time.sleep(2)
-
-driver.quit()
+    # Logout
+    page.locator("#react-burger-menu-btn").click()
+    logout_link = page.locator("#logout_sidebar_link")
+    expect(logout_link).to_be_visible()
+    logout_link.click()
